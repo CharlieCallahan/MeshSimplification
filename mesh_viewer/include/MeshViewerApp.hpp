@@ -51,13 +51,21 @@ class MeshViewerApp : public AppWindow{
     
     void updateState() override;
 
+    void processInput() override; 
+
+    void moveCursor(double x, double y);
+
     MeshViewerData data;
     gShader* shader=nullptr;
     cgMat4 projectionMatrix;
-    cgVec3 viewPosition=cgVec3(0,-2,0);
+    cgVec3 viewPosition=cgVec3(0,0,2);
+    cgVec3 viewDir = cgVec3(0,0,-1);
+    float viewYaw, viewPitch;
     std::vector<MeshGPUBuffer*> renderBuffers;
 };
 
 void logOpenGLErrors();
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
 #endif /* MESHVIEWERAPP */

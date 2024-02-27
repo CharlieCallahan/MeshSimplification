@@ -69,6 +69,7 @@ struct cgMat4{
     void zeros(){for(int i = 0; i < 16; i++){data[i] = 0;}} 
     void toIdentity(){this->zeros(); this->set(0,0,1);this->set(1,1,1);this->set(2,2,1);this->set(3,3,1);}
     cgMat4 operator*(const cgMat4& mat) const;
+    cgVec3 operator*(const cgVec3& vec) const;
 
 };
 cgMat4 trans(float Tx, float Ty, float Tz);
@@ -80,5 +81,7 @@ cgMat4 lookAt(cgVec3 eye, cgVec3 center, cgVec3 up);
 cgVec3 cross(const cgVec3& v1, const cgVec3& v2);
 
 float dot(cgVec3 v1,cgVec3 v2);
+
+cgMat4 rotation(cgVec3 axis, float theta);
 
 #endif /* VECTOR */

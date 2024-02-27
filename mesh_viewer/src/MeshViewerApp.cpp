@@ -56,15 +56,18 @@ void gShader::checkCompileErrors(unsigned int shader, std::string type)
 }
 
 void MeshViewerApp::updateState(){
+    //calculate look at position
+    cgMat4 r1 = rotation(cgVec3(0,1,0),viewPitch);
+    cgMat4 r1_inv = rotation(cgVec3(0,1,0),-viewPitch);
+    cgMat4 r2 = rotation(r1_inv*cgVec3(1,0,0),viewYaw);
+    cgMat4 viewRot = r1*r2;
+    viewDir = viewRot*cgVec3(0,0,-1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     //calculate view matrix
-    this->viewPosition = cgVec3(0,0,2);
     cgMat4 viewTrans = trans(-this->viewPosition.x,-this->viewPosition.y,-this->viewPosition.z);
-
-    cgMat4 viewMatrix = projectionMatrix*viewTrans;
+    cgMat4 viewMatrix = projectionMatrix*viewRot*viewTrans;
 
     shader->bind();
-    // std::cout << "A"; logOpenGLErrors();
 
     const char* sceneTransform_c = "sceneTransform";
     const char* modelTransform_c = "modelTransform";
@@ -83,6 +86,42 @@ void MeshViewerApp::updateState(){
 
     glfwSwapBuffers(window);
     glfwPollEvents();
+}
+
+void MeshViewerApp::processInput(){
+    cgVec3 delta = cgVec3(0,0,0);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
+        delta=delta + cgVec3(-1,0,0);
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
+        delta=delta + cgVec3(1,0,0);
+    }
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
+        delta=delta + cgVec3(0,0,-1);
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){
+        delta=delta + cgVec3(0,0,1);
+    }
+    viewPosition = viewPosition + delta*(1.0/60.0);
+}
+
+void MeshViewerApp::moveCursor(double x, double y){
+    static double lastX=0;
+    static double lastY=0;
+    static bool isFirst = true;
+    if(isFirst){
+        lastX=x;
+        lastY=y;
+        isFirst=false;
+        return;
+    }
+
+    double dx = x-lastX;
+    double dy = y-lastY;
+    lastX=x;
+    lastY=y;
+    viewPitch+=dx*1.0/60.0;
+    viewYaw+=dy*1.0/60.0;
 }
 
 void MeshViewerApp::loadMesh(std::string objFilename){
@@ -146,6 +185,11 @@ MeshViewerApp::MeshViewerApp(int width, int height, std::string windowName) : Ap
     this->shader = new gShader(vertexShader,fragShader);
 
     projectionMatrix = projectionMatrixSimple(1.4, 1, 0.1, 100);
+
+    glfwSetWindowUserPointer(window,this);
+    viewYaw=0;
+    viewPitch=0;
+    glfwSetCursorPosCallback(window, mouse_callback);
 }
 
 MeshGPUBuffer::MeshGPUBuffer(int nIndices, int* indices, int nVerts, gVertex* vertices){
@@ -164,7 +208,7 @@ MeshGPUBuffer::MeshGPUBuffer(int nIndices, int* indices, int nVerts, gVertex* ve
     //generate vert buffer (only positions+normals for this stripped down example)
     glGenBuffers(1, &this->vertexBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, this->vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices)*nVerts, vertices, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(gVertex)*nVerts, vertices, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glBindVertexArray(this->vertexArray);
@@ -202,4 +246,9 @@ void logOpenGLErrors(){
     {
         std::cout << "OpenGL Error Code: " << err << std::endl;
     }
+}
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    MeshViewerApp* mvp = (MeshViewerApp*)glfwGetWindowUserPointer(window);
+    mvp->moveCursor(xpos,ypos);
 }
