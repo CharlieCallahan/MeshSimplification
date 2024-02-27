@@ -77,6 +77,7 @@ void MeshViewerApp::updateState(){
     const char* sceneTransform_c = "sceneTransform";
     const char* modelTransform_c = "modelTransform";
     const char* viewPosition_c = "viewPos";
+    const char* color_c = "color";
 
     GLint stloc = glGetUniformLocation(shader->shader, sceneTransform_c);
     glUniformMatrix4fv(stloc, 1, GL_FALSE, viewMatrix.data);
@@ -90,7 +91,19 @@ void MeshViewerApp::updateState(){
         GLint mtloc = glGetUniformLocation(shader->shader, modelTransform_c);
         glUniformMatrix4fv(mtloc, 1, GL_FALSE, modelTransform.data);
         mesh->bind();
+        //set color
+        glUniform3f(glGetUniformLocation(shader->shader, color_c), 251.0/255.0, 247.0/255.0, 226.0/255.0);
+
         glDrawElements(GL_TRIANGLES, mesh->nIndices, GL_UNSIGNED_INT, nullptr);
+
+        glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+        mesh->bind();
+        //set to different color
+        glUniform3f(glGetUniformLocation(shader->shader, color_c), 255.0, 0.0, 0.0);
+
+        glDrawElements(GL_TRIANGLES, mesh->nIndices, GL_UNSIGNED_INT, nullptr);
+
+        glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
     }
 
     glfwSwapBuffers(window);
@@ -187,13 +200,14 @@ MeshViewerApp::MeshViewerApp(int width, int height, std::string windowName) : Ap
     "} vs_in;\n"
     "out vec4 fragColor;\n"
     "uniform vec3 viewPos;\n"
+    "uniform vec3 color;\n"
     "void main()\n"
     "{\n"
     "    vec3 d = normalize(vs_in.fragPos - viewPos);"
     "    float fresnel = pow(1.0-dot(d,-1*vs_in.fragNormal),1);"
     "    fresnel = fresnel + 0.05;"
     "    fresnel = min(1,max(0,fresnel));"
-    "    fragColor = vec4(251.0/255.0*fresnel, 247.0/255.0*fresnel, 226.0/255.0*fresnel,1);\n"
+    "    fragColor = vec4(color.x*fresnel, color.y*fresnel, color.z*fresnel,1);\n"
     "}";
 
     this->shader = new gShader(vertexShader,fragShader);
@@ -238,8 +252,6 @@ MeshGPUBuffer::MeshGPUBuffer(int nIndices, int* indices, int nVerts, gVertex* ve
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6*sizeof(float), (void*)(int64_t(3*sizeof(float))));
 
     worldSpacePosition = cgVec3(0,0,0);
-    // setVertexAttrPointer(0, 3, GL_FLOAT, 7*sizeof(float), 0); //pos
-    // setVertexAttrPointer(1, 4, GL_FLOAT, 7*sizeof(float), 3*sizeof(float)); //color
 }
 
 void MeshGPUBuffer::bind(){
