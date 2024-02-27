@@ -60,8 +60,13 @@ void MeshViewerApp::updateState(){
     cgMat4 r1 = rotation(cgVec3(0,1,0),viewPitch);
     cgMat4 r1_inv = rotation(cgVec3(0,1,0),-viewPitch);
     cgMat4 r2 = rotation(r1_inv*cgVec3(1,0,0),viewYaw);
+    cgMat4 r2_inv = rotation(r1*cgVec3(1,0,0),-viewYaw);
+
     cgMat4 viewRot = r1*r2;
-    viewDir = viewRot*cgVec3(0,0,-1);
+    cgMat4 camRot = r1_inv*r2_inv;
+    viewDir = camRot*cgVec3(0,0,-1);
+    viewX = camRot*cgVec3(1,0,0);
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     //calculate view matrix
     cgMat4 viewTrans = trans(-this->viewPosition.x,-this->viewPosition.y,-this->viewPosition.z);
@@ -71,9 +76,13 @@ void MeshViewerApp::updateState(){
 
     const char* sceneTransform_c = "sceneTransform";
     const char* modelTransform_c = "modelTransform";
+    const char* viewPosition_c = "viewPos";
 
     GLint stloc = glGetUniformLocation(shader->shader, sceneTransform_c);
     glUniformMatrix4fv(stloc, 1, GL_FALSE, viewMatrix.data);
+
+    GLint vploc = glGetUniformLocation(shader->shader, viewPosition_c);
+    glUniform3f(vploc, viewPosition.x,viewPosition.y,viewPosition.z);
 
     for (MeshGPUBuffer* mesh : this->renderBuffers){
         cgMat4 modelTransform = trans(mesh->worldSpacePosition.x,mesh->worldSpacePosition.y,mesh->worldSpacePosition.z);
@@ -91,16 +100,16 @@ void MeshViewerApp::updateState(){
 void MeshViewerApp::processInput(){
     cgVec3 delta = cgVec3(0,0,0);
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
-        delta=delta + cgVec3(-1,0,0);
+        delta=delta - viewX;
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
-        delta=delta + cgVec3(1,0,0);
+        delta=delta + viewX;
     }
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
-        delta=delta + cgVec3(0,0,-1);
+        delta=delta + viewDir;
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){
-        delta=delta + cgVec3(0,0,1);
+        delta=delta - viewDir;
     }
     viewPosition = viewPosition + delta*(1.0/60.0);
 }
@@ -177,9 +186,12 @@ MeshViewerApp::MeshViewerApp(int width, int height, std::string windowName) : Ap
     "    vec3 fragNormal;\n"
     "} vs_in;\n"
     "out vec4 fragColor;\n"
+    "uniform vec3 viewPos;\n"
     "void main()\n"
     "{\n"
-    "    fragColor = vec4(vs_in.fragNormal,1);\n"
+    "    vec3 d = normalize(vs_in.fragPos - viewPos);"
+    "    float fresnel = pow(1.0-dot(d,-1*vs_in.fragNormal),3);"
+    "    fragColor = vec4(fresnel,fresnel,fresnel,1);\n"
     "}";
 
     this->shader = new gShader(vertexShader,fragShader);

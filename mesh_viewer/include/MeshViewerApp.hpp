@@ -60,6 +60,7 @@ class MeshViewerApp : public AppWindow{
     cgMat4 projectionMatrix;
     cgVec3 viewPosition=cgVec3(0,0,2);
     cgVec3 viewDir = cgVec3(0,0,-1);
+    cgVec3 viewX = cgVec3(1,0,0);
     float viewYaw, viewPitch;
     std::vector<MeshGPUBuffer*> renderBuffers;
 };
