@@ -190,8 +190,10 @@ MeshViewerApp::MeshViewerApp(int width, int height, std::string windowName) : Ap
     "void main()\n"
     "{\n"
     "    vec3 d = normalize(vs_in.fragPos - viewPos);"
-    "    float fresnel = pow(1.0-dot(d,-1*vs_in.fragNormal),3);"
-    "    fragColor = vec4(fresnel,fresnel,fresnel,1);\n"
+    "    float fresnel = pow(1.0-dot(d,-1*vs_in.fragNormal),1);"
+    "    fresnel = fresnel + 0.05;"
+    "    fresnel = min(1,max(0,fresnel));"
+    "    fragColor = vec4(251.0/255.0*fresnel, 247.0/255.0*fresnel, 226.0/255.0*fresnel,1);\n"
     "}";
 
     this->shader = new gShader(vertexShader,fragShader);
