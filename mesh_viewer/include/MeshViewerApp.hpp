@@ -4,17 +4,17 @@
 #include "MeshLoader.hpp"
 
 // vertex data passed to the shader
-#pragma pack(1)
+// #pragma pack(1)
 struct gVertex{
     cgVec3 position;
     cgVec3 normal;
 };
-#pragma pack(pop)
+// #pragma pack(pop)
 
 //glsl shader
 struct gShader{
     public:
-    gShader(char* vertcode, char* fragcode);
+    gShader(const char* vertcode, const char* fragcode);
 
     void bind();
 
@@ -41,6 +41,7 @@ struct MeshGPUBuffer{
 
 struct MeshViewerData{
     std::vector<objItem*> original_meshes;
+    std::vector<objItem*> processed_meshes;
 };
 
 class MeshViewerApp : public AppWindow{
@@ -49,6 +50,8 @@ class MeshViewerApp : public AppWindow{
 
     void loadMesh(std::string objFilename);
     
+    void simplifyMeshes(float compressionfactor);
+
     void updateState() override;
 
     void processInput() override; 

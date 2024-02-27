@@ -1,7 +1,8 @@
 #include "MeshViewerApp.hpp"
 #include "Vector.hpp"
+#include "AutoLOD.hpp"
 
-gShader::gShader(char* vertcode, char* fragcode){
+gShader::gShader(const char* vertcode, const char* fragcode){
     // compile shaders
     unsigned int vertex, fragment;
     // vertex shader
@@ -172,11 +173,27 @@ void MeshViewerApp::loadMesh(std::string objFilename){
         indx++;
     }
 
+    simplifyMeshes(4);
+}
+
+void MeshViewerApp::simplifyMeshes(float compressionfactor){
+    
+    for (objItem* og_item : data.original_meshes){
+        std::vector<geo::Facet> facets = std::vector<geo::Facet>(og_item->indices.size()/3);
+
+        for(int i = 0; i < og_item->indices.size()/3; i++){
+            facets[i] = geo::Facet(og_item->indices[i*3+0],og_item->indices[i*3+1],og_item->indices[i*3+2]);
+        }
+        std::vector<geo::Facet> result_facets;
+        int actualSize;
+        AutoLOD::genLODMesh(facets,og_item->positions,result_facets,compressionfactor,actualSize);
+        std::cout << "Actual size: "<<actualSize<<"\n";
+    }
 }
 
 MeshViewerApp::MeshViewerApp(int width, int height, std::string windowName) : AppWindow(width,height,windowName){
     //just inline the shader here for simplicity
-    char* vertexShader = "#version 330 core "
+    const char* vertexShader = "#version 330 core "
     "layout (location = 0) in vec3 aPos_i; // the position variable has attribute position 0\n"
     "layout (location = 1) in vec3 aNormal_i; //model corresponding to vertex data\n"
     "uniform mat4 sceneTransform; //camera transform\n"
@@ -193,7 +210,7 @@ MeshViewerApp::MeshViewerApp(int width, int height, std::string windowName) : Ap
     "    vs_out.fragNormal = vec3(modelTransform * vec4(aNormal_i, 1.0)); //fragment normal in world space\n"
     "}";
 
-    char* fragShader = "#version 330 core "
+    const char* fragShader = "#version 330 core "
     "in VS_OUT{ //output from frag shader\n"
     "    vec3 fragPos;\n"
     "    vec3 fragNormal;\n"
