@@ -140,6 +140,8 @@ void loadOBJFile(std::string filename, std::vector<objItem*>& target, std::strin
             int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2] );
             if (matches != 9){
                 std::cout << lineHeader<<"\n";
+                char line[1024];
+                std::cout << fgets(line,1024,file);
                 printf("OBJ File can't be read, Make sure that file is Triangulated \n");
                 exit(-1);
             }
