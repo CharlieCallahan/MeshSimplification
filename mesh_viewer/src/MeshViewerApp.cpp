@@ -196,7 +196,7 @@ void MeshViewerApp::simplifyMeshes(float compressionfactor, float maxSinTheta){
             indices[i*3+2]=result_facets[i].inds[2];
         }
         //recalculate normals
-        std::vector<cgVec3> result_normals = std::vector<cgVec3>(og_item->positions.size());
+        std::vector<cgVec3> result_normals = std::vector<cgVec3>(result_points.size());
         for(int i = 0; i < result_normals.size(); i++){
             result_normals[i] = cgVec3(0,0,0);
         }
@@ -211,12 +211,12 @@ void MeshViewerApp::simplifyMeshes(float compressionfactor, float maxSinTheta){
 
         }
         for (int i = 0; i < result_normals.size(); i++){
-            if(result_normals[i].norm() > 0.001){
-                result_normals[i].normalize();
-            }
+            result_normals[i].normalize();
+        
         }
 
         MeshGPUBuffer* newbuff = generateRenderBuffer(result_points,result_normals,indices);
+        // MeshGPUBuffer* newbuff = generateRenderBuffer(og_item->positions,og_item->normals,indices);
         newbuff->worldSpacePosition = cgVec3(3,0,0);
         this->renderBuffers.push_back(newbuff);
     }

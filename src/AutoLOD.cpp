@@ -284,6 +284,9 @@ float AutoLOD::AutoLODGraph::getEcolLoss(std::vector<cgVec3>& points, int thisno
         cgVec3 p2_og = points[f.inds[2]];
         
         float area = geo::triArea(p0,p1,p2);
+        if(area == 0.0){ //dont produce zero area facets
+            return -1.0;
+        }
         sumArea+=area;
         topoAspectRatio_new = std::max<float>(topoAspectRatio_new,geo::triAspectRatio(p0,p1,p2));
         cgVec3 normal_og = geo::faceNormal(p0_og,p1_og,p2_og);

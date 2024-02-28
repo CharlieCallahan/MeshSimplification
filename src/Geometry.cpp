@@ -149,7 +149,7 @@ void geo::remapVertices(std::vector<geo::Facet>& og_facets, std::vector<cgVec3>&
             if(indMap.count(f.inds[i])){
                 continue; //already mapped this one
             } else {
-                indMap[f.inds[i]] = new_vertices.size();
+                indMap[f.inds[i]] = int(new_vertices.size());
                 new_vertices.push_back(og_vertices[f.inds[i]]);
             }
         }
