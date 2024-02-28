@@ -27,32 +27,6 @@ float AutoLOD::AutoLODGraphNode::getLoss(std::vector<cgVec3>& points){
     return area*stdevNormal.norm();
 }
 
-float AutoLOD::AutoLODGraphNode::getEcolLoss(std::vector<cgVec3>& points, int neighborNode){
-    float loss = 0.0;
-    float area = 0.0;
-
-    geo::Edge coll_edge = geo::Edge(this->vertInd,neighborNode); //collapsing edge
-    //get facets to be removed - there should always be 2:
-    geo::Facet coll_facets [2]; //collapsing faces
-    int temp = 0;
-    for(geo::Facet f : this->facets){
-        if(f.contains(coll_edge)){
-            coll_facets[temp] = f;
-            temp++;
-        }
-    }
-    // assert(temp == 2);
-    if(temp != 2){
-        return -1.0;
-    }
-    cgVec3 n0 = geo::faceNormal(points[coll_facets[0].inds[0]],points[coll_facets[0].inds[1]],points[coll_facets[0].inds[2]]);
-    cgVec3 n1 = geo::faceNormal(points[coll_facets[1].inds[0]],points[coll_facets[1].inds[1]],points[coll_facets[1].inds[2]]);
-    float a0 = geo::triArea(points[coll_facets[0].inds[0]],points[coll_facets[0].inds[1]],points[coll_facets[0].inds[2]]);
-    float a1 = geo::triArea(points[coll_facets[1].inds[0]],points[coll_facets[1].inds[1]],points[coll_facets[1].inds[2]]);
-
-    return cross(n0,n1).norm()*(a0+a1);
-}
-
 AutoLOD::AutoLODGraph::AutoLODGraph(std::vector<geo::Facet>& facets, std::vector<cgVec3>& points){
     int nPts = int(points.size());
     double logPts = log2(float(nPts));
@@ -238,6 +212,69 @@ bool AutoLOD::AutoLODGraph::ecolIsLegal(int v_keep, int v_remove){
     return true;
 }
 
+float AutoLOD::AutoLODGraph::getEcolLoss(std::vector<cgVec3>& points, int thisnode, int neighborNode){
+    AutoLODGraphNode* keepNode = (AutoLODGraphNode*)this->nodes->get(uuid128(thisnode));
+    AutoLODGraphNode* removeNode = (AutoLODGraphNode*)this->nodes->get(uuid128(neighborNode));
+
+    geo::Edge coll_edge = geo::Edge(keepNode->vertInd,neighborNode); //collapsing edge
+    //get facets to be removed - there should always be 2:
+    geo::Facet coll_facets [2]; //collapsing faces
+    int temp = 0;
+    for(geo::Facet f : keepNode->facets){
+        if(f.contains(coll_edge)){
+            coll_facets[temp] = f;
+            temp++;
+        }
+    }
+    if(temp != 2){
+        return -1.0;
+    }
+    //loss from topology (flat surface = less loss)
+    cgVec3 n0 = geo::faceNormal(points[coll_facets[0].inds[0]],points[coll_facets[0].inds[1]],points[coll_facets[0].inds[2]]);
+    cgVec3 n1 = geo::faceNormal(points[coll_facets[1].inds[0]],points[coll_facets[1].inds[1]],points[coll_facets[1].inds[2]]);
+    float a0 = geo::triArea(points[coll_facets[0].inds[0]],points[coll_facets[0].inds[1]],points[coll_facets[0].inds[2]]);
+    float a1 = geo::triArea(points[coll_facets[1].inds[0]],points[coll_facets[1].inds[1]],points[coll_facets[1].inds[2]]);
+    // float ar = triAspectRatio(cgVec3 p1,cgVec3 p2,cgVec3 p3)
+    float lossTopo = cross(n0,n1).norm();//*(a0+a1);
+    AutoLODGraphNode* centerNode = (AutoLODGraphNode*)this->nodes->get(uuid128(thisnode));
+    AutoLODGraphNode* collapsingNode = (AutoLODGraphNode*)this->nodes->get(uuid128(neighborNode));
+    std::unordered_set<geo::Facet,geo::Facet::HashFunctionUnordered> affectedFacets;
+    for( geo::Facet f : centerNode->facets){
+        affectedFacets.insert(f);
+    }
+    for( geo::Facet f : collapsingNode->facets){
+        affectedFacets.insert(f);
+    }
+
+    //calculate original aspect ratio:
+    float topoAspectRatio_og = 1.0;
+    for (geo::Facet f : affectedFacets){
+        cgVec3 p0 = points[f.inds[0]];
+        cgVec3 p1 = points[f.inds[1]];
+        cgVec3 p2 = points[f.inds[2]];
+        topoAspectRatio_og = std::max<float>(topoAspectRatio_og,geo::triAspectRatio(p0,p1,p2));
+    }
+
+    float topoAspectRatio_new = 1.0;
+    for (geo::Facet f : affectedFacets){
+        if(f.contains(coll_edge)){
+            continue;
+        }
+        geo::Facet newfacet = geo::Facet(f);
+        newfacet.replace(neighborNode,keepNode->vertInd);
+        
+        cgVec3 p0 = points[newfacet.inds[0]];
+        cgVec3 p1 = points[newfacet.inds[1]];
+        cgVec3 p2 = points[newfacet.inds[2]];
+        topoAspectRatio_new = std::max<float>(topoAspectRatio_new,geo::triAspectRatio(p0,p1,p2));
+    }
+    float aspectLoss = (topoAspectRatio_new/topoAspectRatio_og);
+    // std::cout << "og aspect: "<<topoAspectRatio_og << "new aspect: "<<topoAspectRatio_new<<"\n";
+    float loss = aspectLoss*lossTopo;
+    // std::cout << aspectLoss << ", "<<lossTopo<<"\n";
+    return aspectLoss+lossTopo;
+}
+
 void AutoLOD::AutoLODGraph::ecol(int v_keep, int v_remove){
     // std::cout << "keep: "<<v_keep<<" v_remove: "<<v_remove<<"\n";
     AutoLODGraphNode* keepNode = (AutoLODGraphNode*)this->nodes->get(uuid128(v_keep));
@@ -260,10 +297,6 @@ void AutoLOD::AutoLODGraph::ecol(int v_keep, int v_remove){
             temp++;
         }
     }
-    // std::cout << "COLL FACETS:\n";
-    // coll_facets[0].print();
-    // coll_facets[1].print();
-
     assert(temp == 2);
     
     //collect affected nodes
@@ -278,8 +311,6 @@ void AutoLOD::AutoLODGraph::ecol(int v_keep, int v_remove){
     affectedNodes.erase(v_remove); //dont modify this one because it will be deleted soon
 
     for(geo::Facet f : removeNode->facets){ //add remove node facets to keep node
-        // std::cout <<"adding to keepNode: \n";
-        // f.print();
         keepNode->facets.insert(f);
     };
 
@@ -321,7 +352,6 @@ void AutoLOD::AutoLODGraph::ecol(int v_keep, int v_remove){
         if(node->vertInd != v_keep){
             node->adjacentNodes.insert(v_keep);
         }
-
     }
 
     //add new neighbors to v_keep
@@ -354,9 +384,9 @@ void AutoLOD::genLODMesh(std::vector<geo::Facet>& meshFacets,
                  std::vector<geo::Facet>& targetFacets,
                  float compressionFactor, int& actualSize )
 {
-    std::cout << "num points: "<<meshPoints.size();
+    std::cout << "num points: "<<meshPoints.size()<<"\n";
     AutoLODGraph graph = AutoLODGraph(meshFacets, meshPoints);
-    std::cout << "graph size: "<<graph.nodes->calcSize();
+    std::cout << "graph size: "<<graph.nodes->calcSize()<<"\n";
     graph.debugCheckGraphLegality();
     
     int size = graph.nodes->calcSize();
@@ -375,6 +405,7 @@ void AutoLOD::genLODMesh(std::vector<geo::Facet>& meshFacets,
             AutoLODGraphNode* node = (AutoLODGraphNode*)graph.nodes->iterGetNext();
             if(!node)
                 break;
+
             node->wasAffected = false;
 
             for(int adjNode : node->adjacentNodes){
@@ -382,7 +413,7 @@ void AutoLOD::genLODMesh(std::vector<geo::Facet>& meshFacets,
                     continue;
                 }
                 if(graph.ecolIsLegal(node->vertInd,adjNode)){
-                    float loss = node->getEcolLoss(graph.ptsCopy,adjNode);
+                    float loss = graph.getEcolLoss(graph.ptsCopy,node->vertInd,adjNode);
                     if(loss < 0){
                         continue;
                     }
@@ -397,8 +428,6 @@ void AutoLOD::genLODMesh(std::vector<geo::Facet>& meshFacets,
             break;
         }
 
-        // std::cout << "merge nodes: " << nodeToMergeInto << " " << minNode->vertInd<<"\n";
-        // assert(! (graph.horizonEdges.count(geo::Edge(nodeToMergeInto,minNode->vertInd))));
         int numEcols = 0;
         int maxEcols = lossHierarchy.size();
         for(auto ecolOp : lossHierarchy){

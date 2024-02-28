@@ -162,14 +162,7 @@ void MeshViewerApp::loadMesh(std::string objFilename){
     int indx=0;
 
     for(objItem* item : data.original_meshes){
-        std::cout << item->positions.size()<<"\n";
-        std::vector<gVertex> vertexData = std::vector<gVertex>(item->positions.size());
-
-        for(int i = 0; i < item->positions.size(); i++){
-            vertexData[i].position = item->positions[i];
-            vertexData[i].normal = item->normals[i];
-        }
-        this->renderBuffers[indx]=new MeshGPUBuffer(item->indices.size(),item->indices.data(),vertexData.size(),vertexData.data());
+        this->renderBuffers[indx]=generateRenderBuffer(item->positions, item->normals, item->indices);
         indx++;
     }
 
@@ -184,11 +177,41 @@ void MeshViewerApp::simplifyMeshes(float compressionfactor){
         for(int i = 0; i < og_item->indices.size()/3; i++){
             facets[i] = geo::Facet(og_item->indices[i*3+0],og_item->indices[i*3+1],og_item->indices[i*3+2]);
         }
+
+        std::vector<geo::Facet> simplified_facets;
         std::vector<geo::Facet> result_facets;
+        std::vector<geo::Facet> result_facets_trash;
+        std::vector<cgVec3> result_points;
+        std::vector<cgVec3> result_normals;
+
         int actualSize;
-        AutoLOD::genLODMesh(facets,og_item->positions,result_facets,compressionfactor,actualSize);
+        AutoLOD::genLODMesh(facets,og_item->positions,simplified_facets,compressionfactor,actualSize);
         std::cout << "Actual size: "<<actualSize<<"\n";
+
+        geo::remapVertices(simplified_facets,og_item->positions,result_facets,result_points);
+        //not optimal but i dont want to rewrite the function
+        geo::remapVertices(simplified_facets,og_item->normals,result_facets_trash,result_normals);
+
+        std::vector<int> indices = std::vector<int>(result_facets.size()*3);
+        for (int i = 0; i < result_facets.size(); i++){
+            indices[i*3+0]=result_facets[i].inds[0];
+            indices[i*3+1]=result_facets[i].inds[1];
+            indices[i*3+2]=result_facets[i].inds[2];
+        }
+        MeshGPUBuffer* newbuff = generateRenderBuffer(result_points,result_normals,indices);
+        newbuff->worldSpacePosition = cgVec3(3,0,0);
+        this->renderBuffers.push_back(newbuff);
     }
+}
+
+MeshGPUBuffer* MeshViewerApp::generateRenderBuffer(std::vector<cgVec3>& pts, std::vector<cgVec3>& normals, std::vector<int>& indices){
+    std::vector<gVertex> vertexData = std::vector<gVertex>(pts.size());
+    for(int i = 0; i < pts.size(); i++){
+        vertexData[i].position = pts[i];
+        vertexData[i].normal = normals[i];
+        normals[i].print();
+    }
+    return new MeshGPUBuffer(indices.size(),indices.data(),vertexData.size(),vertexData.data());
 }
 
 MeshViewerApp::MeshViewerApp(int width, int height, std::string windowName) : AppWindow(width,height,windowName){
@@ -200,20 +223,20 @@ MeshViewerApp::MeshViewerApp(int width, int height, std::string windowName) : Ap
     "uniform mat4 modelTransform; //model transform\n"
     "out VS_OUT{ //output to frag shader\n"
     "    vec3 fragPos;\n"
-    "    vec3 fragNormal;\n"
+    "    smooth vec3 fragNormal;\n"
     "} vs_out;\n"
     "void main()\n"
     "{\n"
     "    mat4 transform = sceneTransform*modelTransform;\n"
     "    gl_Position = transform*vec4(aPos_i, 1.0); //position on the screen\n"
     "    vs_out.fragPos = vec3(modelTransform * vec4(aPos_i, 1.0)); //fragment position in world space\n"
-    "    vs_out.fragNormal = vec3(modelTransform * vec4(aNormal_i, 1.0)); //fragment normal in world space\n"
+    "    vs_out.fragNormal = aNormal_i;//vec3(modelTransform * vec4(aNormal_i, 1.0)); //fragment normal in world space\n"
     "}";
 
     const char* fragShader = "#version 330 core "
     "in VS_OUT{ //output from frag shader\n"
     "    vec3 fragPos;\n"
-    "    vec3 fragNormal;\n"
+    "    smooth vec3 fragNormal;\n"
     "} vs_in;\n"
     "out vec4 fragColor;\n"
     "uniform vec3 viewPos;\n"

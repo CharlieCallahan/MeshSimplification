@@ -98,6 +98,13 @@ float geo::triArea(cgVec3 p1,cgVec3 p2,cgVec3 p3){
     return 0.5*(cross(p2-p1,p3-p1).norm());
 };
 
+float geo::triAspectRatio(cgVec3 p1,cgVec3 p2,cgVec3 p3){
+    float a = (p1-p2).norm();
+    float b = (p2-p3).norm();
+    float c = (p3-p1).norm();
+    float s = (a+b+c)/2;
+    return a*b*c/(8*(s-a)*(s-b)*(s-c));
+}
 
 bool geo::Facet::operator == (const geo::Facet& f1) const {
     return 
@@ -131,5 +138,28 @@ bool geo::Facet::sharesEdge(Facet& f2){
         return false;
     } else {
         return true;
+    }
+}
+
+void geo::remapVertices(std::vector<geo::Facet>& og_facets, std::vector<cgVec3>& og_vertices, std::vector<geo::Facet>& new_facets, std::vector<cgVec3>& new_vertices){
+    std::unordered_map<int, int> indMap; 
+    
+    for(geo::Facet f : og_facets){
+        for(int i = 0; i < 3; i++){
+            if(indMap.count(f.inds[i])){
+                continue; //already mapped this one
+            } else {
+                indMap[f.inds[i]] = new_vertices.size();
+                new_vertices.push_back(og_vertices[f.inds[i]]);
+            }
+        }
+    }
+    new_facets = std::vector<geo::Facet>(og_facets.size());
+    for(int i = 0; i < og_facets.size(); i++){
+        int i0 = indMap[og_facets[i].inds[0]];
+        int i1 = indMap[og_facets[i].inds[1]];
+        int i2 = indMap[og_facets[i].inds[2]];
+        new_facets[i] = geo::Facet(i0,i1,i2);
+
     }
 }

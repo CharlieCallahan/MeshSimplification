@@ -66,6 +66,9 @@ class MeshViewerApp : public AppWindow{
     cgVec3 viewX = cgVec3(1,0,0);
     float viewYaw, viewPitch;
     std::vector<MeshGPUBuffer*> renderBuffers;
+
+    private:
+    MeshGPUBuffer* generateRenderBuffer(std::vector<cgVec3>& pts, std::vector<cgVec3>& normals, std::vector<int>& indices);
 };
 
 void logOpenGLErrors();

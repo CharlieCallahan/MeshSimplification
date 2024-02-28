@@ -35,6 +35,17 @@ namespace geo{
  */
 float triArea(cgVec3 p1,cgVec3 p2,cgVec3 p3);
 
+/**
+ * @brief Get the aspect ratio of the triangle - aspect ratio is larger for a more
+ * skinny triangle
+ * 
+ * @param p1 
+ * @param p2 
+ * @param p3 
+ * @return float 
+ */
+float triAspectRatio(cgVec3 p1,cgVec3 p2,cgVec3 p3);
+
 uint64_t hash(uint64_t value);
 
 /**
@@ -193,6 +204,16 @@ Edge getSharedEdge(Facet& f1, Facet& f2);
  * @param target edges will be appended into this vector
  */
 void getHorizonEdges(std::vector<Facet>& facets, std::vector<Edge>& target);
+
+/**
+ * @brief removes unused vertices and remaps the vertex indices to map to the new set of verts
+ * 
+ * @param og_facets 
+ * @param og_vertices 
+ * @param new_facets 
+ * @param new_vertices 
+ */
+void remapVertices(std::vector<Facet>& og_facets, std::vector<cgVec3>& og_vertices, std::vector<Facet>& new_facets, std::vector<cgVec3>& new_vertices);
 
 }
 #endif /* GEOMETRY */
