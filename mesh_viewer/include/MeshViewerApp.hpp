@@ -50,7 +50,7 @@ class MeshViewerApp : public AppWindow{
 
     void loadMesh(std::string objFilename);
     
-    void simplifyMeshes(float compressionfactor);
+    void simplifyMeshes(float compressionfactor, float maxSinTheta);
 
     void updateState() override;
 

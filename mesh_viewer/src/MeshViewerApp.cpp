@@ -166,10 +166,10 @@ void MeshViewerApp::loadMesh(std::string objFilename){
         indx++;
     }
 
-    simplifyMeshes(4);
+    simplifyMeshes(4,0.1);
 }
 
-void MeshViewerApp::simplifyMeshes(float compressionfactor){
+void MeshViewerApp::simplifyMeshes(float compressionfactor, float maxSinTheta){
     
     for (objItem* og_item : data.original_meshes){
         std::vector<geo::Facet> facets = std::vector<geo::Facet>(og_item->indices.size()/3);
@@ -182,15 +182,12 @@ void MeshViewerApp::simplifyMeshes(float compressionfactor){
         std::vector<geo::Facet> result_facets;
         std::vector<geo::Facet> result_facets_trash;
         std::vector<cgVec3> result_points;
-        std::vector<cgVec3> result_normals;
 
         int actualSize;
-        AutoLOD::genLODMesh(facets,og_item->positions,simplified_facets,compressionfactor,actualSize);
+        AutoLOD::genLODMesh(facets,og_item->positions,simplified_facets,compressionfactor,maxSinTheta,actualSize);
         std::cout << "Actual size: "<<actualSize<<"\n";
 
         geo::remapVertices(simplified_facets,og_item->positions,result_facets,result_points);
-        //not optimal but i dont want to rewrite the function
-        geo::remapVertices(simplified_facets,og_item->normals,result_facets_trash,result_normals);
 
         std::vector<int> indices = std::vector<int>(result_facets.size()*3);
         for (int i = 0; i < result_facets.size(); i++){
@@ -198,6 +195,27 @@ void MeshViewerApp::simplifyMeshes(float compressionfactor){
             indices[i*3+1]=result_facets[i].inds[1];
             indices[i*3+2]=result_facets[i].inds[2];
         }
+        //recalculate normals
+        std::vector<cgVec3> result_normals = std::vector<cgVec3>(og_item->positions.size());
+        for(int i = 0; i < result_normals.size(); i++){
+            result_normals[i] = cgVec3(0,0,0);
+        }
+        for (int i = 0; i < result_facets.size(); i++){
+            cgVec3 p0 = result_points[result_facets[i].inds[0]];
+            cgVec3 p1 = result_points[result_facets[i].inds[1]];
+            cgVec3 p2 = result_points[result_facets[i].inds[2]];
+            cgVec3 normal = geo::faceNormal(p0,p1,p2);
+            result_normals[result_facets[i].inds[0]] = result_normals[result_facets[i].inds[0]]+normal;
+            result_normals[result_facets[i].inds[1]] = result_normals[result_facets[i].inds[1]]+normal;
+            result_normals[result_facets[i].inds[2]] = result_normals[result_facets[i].inds[2]]+normal;
+
+        }
+        for (int i = 0; i < result_normals.size(); i++){
+            if(result_normals[i].norm() > 0.001){
+                result_normals[i].normalize();
+            }
+        }
+
         MeshGPUBuffer* newbuff = generateRenderBuffer(result_points,result_normals,indices);
         newbuff->worldSpacePosition = cgVec3(3,0,0);
         this->renderBuffers.push_back(newbuff);
@@ -209,7 +227,6 @@ MeshGPUBuffer* MeshViewerApp::generateRenderBuffer(std::vector<cgVec3>& pts, std
     for(int i = 0; i < pts.size(); i++){
         vertexData[i].position = pts[i];
         vertexData[i].normal = normals[i];
-        normals[i].print();
     }
     return new MeshGPUBuffer(indices.size(),indices.data(),vertexData.size(),vertexData.data());
 }

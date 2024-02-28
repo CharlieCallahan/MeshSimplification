@@ -47,7 +47,7 @@ namespace AutoLOD{
          * @param neighborNode neighboring node - must exist in adjacentNodes
          * @return float 
          */
-        float getEcolLoss(std::vector<cgVec3>& points, int thisnode, int neighborNode);
+        float getEcolLoss(std::vector<cgVec3>& points, int thisnode, int neighborNode, float maxSinTheta);
 
         /**
          * @brief Checks to see if edge collapse is legal: 
@@ -89,12 +89,14 @@ namespace AutoLOD{
      * @param meshPoints base mesh points
      * @param targetFacets resulting facets
      * @param compressionFactor 
+     * @param maxSinTheta a smaller value makes the algorithm try to preserve sharp edges over 
+     * keeping the triangle aspect ratio close to 1.
      * @param actualSize actual number of vetices in resulting mesh
      */
     void genLODMesh(std::vector<geo::Facet>& meshFacets, 
                  std::vector<cgVec3>& meshPoints,
                  std::vector<geo::Facet>& targetFacets,
-                 float compressionFactor, int& actualSize );
+                 float compressionFactor,float maxSinTheta, int& actualSize );
     
 };
 
