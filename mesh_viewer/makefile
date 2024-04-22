@@ -1,17 +1,5 @@
 TARGET = view_mesh
 
-#tools
-IMGUI_DIR = extern/imgui
-
-IMGUI_OBJS = \
-$(IMGUI_DIR)/imgui.o \
-$(IMGUI_DIR)/imgui_demo.o \
-$(IMGUI_DIR)/imgui_draw.o \
-$(IMGUI_DIR)/imgui_tables.o \
-$(IMGUI_DIR)/imgui_widgets.o \
-$(IMGUI_DIR)/backends/imgui_impl_glfw.o \
-$(IMGUI_DIR)/backends/imgui_impl_opengl3.o \
-
 INCLUDES = -Iinclude/ \
 		   -I../include/
 
