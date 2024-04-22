@@ -98,11 +98,11 @@ cgMat4 trans(float Tx, float Ty, float Tz)
 
 cgMat4 projectionMatrixSimple(float aspect, float fov, float n, float f)
 {
-    float scale = 1 / (aspect * tan(fov / 2));
-    return cgMat4(scale, 0, 0, 0,
-                  0, scale, 0, 0,
-                  0, 0, -f / (f - n), -f * n / (f - n),
-                  0, 0, -1, 0);
+    float f_p = 1.0/(tan(fov/2));
+    return cgMat4(f_p/aspect, 0, 0, 0,
+                0, f_p, 0, 0,
+                0, 0, (f+n)/(n-f), (2*f*n)/(n-f),
+                0, 0, -1, 0);
 }
 
 cgMat4 lookAt(cgVec3 eye, cgVec3 center, cgVec3 up)

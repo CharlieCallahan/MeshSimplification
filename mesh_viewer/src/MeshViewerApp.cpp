@@ -57,6 +57,14 @@ void gShader::checkCompileErrors(unsigned int shader, std::string type)
 }
 
 void MeshViewerApp::updateState(){
+    //check if user is pressing q or e to rotate the view accordingly
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS){
+        viewPitch-=1.0/60.0*2;
+    }
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS){
+        viewPitch+=1.0/60.0*2;
+    }
+
     //calculate look at position
     cgMat4 r1 = rotation(cgVec3(0,1,0),viewPitch);
     cgMat4 r1_inv = rotation(cgVec3(0,1,0),-viewPitch);
@@ -125,6 +133,12 @@ void MeshViewerApp::processInput(){
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){
         delta=delta - viewDir;
     }
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS){
+        delta=delta + cgVec3(0,1,0);
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS){
+        delta=delta - cgVec3(0,1,0);
+    }
     viewPosition = viewPosition + delta*(1.0/60.0);
 }
 
@@ -166,7 +180,7 @@ void MeshViewerApp::loadMesh(std::string objFilename){
         indx++;
     }
 
-    simplifyMeshes(4,0.1);
+    simplifyMeshes(20,100.0);
 }
 
 void MeshViewerApp::simplifyMeshes(float compressionfactor, float maxSinTheta){
@@ -240,7 +254,7 @@ MeshViewerApp::MeshViewerApp(int width, int height, std::string windowName) : Ap
     "uniform mat4 modelTransform; //model transform\n"
     "out VS_OUT{ //output to frag shader\n"
     "    vec3 fragPos;\n"
-    "    smooth vec3 fragNormal;\n"
+    "    flat vec3 fragNormal;\n"
     "} vs_out;\n"
     "void main()\n"
     "{\n"
@@ -253,7 +267,7 @@ MeshViewerApp::MeshViewerApp(int width, int height, std::string windowName) : Ap
     const char* fragShader = "#version 330 core "
     "in VS_OUT{ //output from frag shader\n"
     "    vec3 fragPos;\n"
-    "    smooth vec3 fragNormal;\n"
+    "    flat vec3 fragNormal;\n"
     "} vs_in;\n"
     "out vec4 fragColor;\n"
     "uniform vec3 viewPos;\n"
@@ -274,7 +288,6 @@ MeshViewerApp::MeshViewerApp(int width, int height, std::string windowName) : Ap
     glfwSetWindowUserPointer(window,this);
     viewYaw=0;
     viewPitch=0;
-    glfwSetCursorPosCallback(window, mouse_callback);
 }
 
 MeshGPUBuffer::MeshGPUBuffer(int nIndices, int* indices, int nVerts, gVertex* vertices){
@@ -283,7 +296,7 @@ MeshGPUBuffer::MeshGPUBuffer(int nIndices, int* indices, int nVerts, gVertex* ve
     glGenVertexArrays(1, &this->vertexArray);
     glBindVertexArray(this->vertexArray);
 
-    //gen index buffer
+    //gen index buffers
     glGenBuffers(1,&this->indexBuffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->indexBuffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int)*nIndices, indices, GL_DYNAMIC_DRAW);
@@ -329,9 +342,4 @@ void logOpenGLErrors(){
     {
         std::cout << "OpenGL Error Code: " << err << std::endl;
     }
-}
-
-void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
-    MeshViewerApp* mvp = (MeshViewerApp*)glfwGetWindowUserPointer(window);
-    mvp->moveCursor(xpos,ypos);
 }

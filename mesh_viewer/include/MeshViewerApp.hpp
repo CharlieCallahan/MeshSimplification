@@ -73,6 +73,4 @@ class MeshViewerApp : public AppWindow{
 
 void logOpenGLErrors();
 
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-
 #endif /* MESHVIEWERAPP */
